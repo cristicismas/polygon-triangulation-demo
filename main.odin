@@ -135,7 +135,7 @@ is_point_inside_triangle :: proc(point: vec2, triangle: Triangle) -> bool {
 	CP := point - triangle[2]
 
 	// Then we make sure that the cross products of these components have the same sign,
-	// which means that the point "sits" on the same side of all vertices
+	// which means that the point "sits" on the same side of all the edges of the triangle.
 	// If the point is on the same side for all cross products, the point is inside the triangle,
 	// otherwise, it is outside the triangle
 	first_cross := linalg.cross(AB, AP)
