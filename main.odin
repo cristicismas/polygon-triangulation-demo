@@ -75,14 +75,23 @@ draw_polygon_triangles :: proc() {
 	}
 
 	for t, i in triangles {
-		rl.DrawTriangleLines(t[0], t[1], t[2], colors[i])
+		// raylib wants counter-clockwise order for drawing triangle lines
+		// (although even clockwise order seems to work for this...)
+		rl.DrawTriangleLines(t[2], t[1], t[0], colors[i])
 	}
 }
 
-// Assumes clockwise winding order and uses the ear-cut algorithm
-triangulate_polygon :: proc(vertices: []vec2, allocator := context.temp_allocator) -> []Triangle {
-	checklist := slice.clone_to_dynamic(vertices)
+triangulate_polygon :: proc(
+	vertices: []vec2,
+	allocator := context.temp_allocator,
+	loc := #caller_location,
+) -> []Triangle {
+	checklist := slice.clone_to_dynamic(vertices, allocator)
 	triangles := make([dynamic]Triangle, 0, len(vertices) - 2, allocator)
+
+	// Just a safety check so I don't loop forever if there is a mistake somewhere else
+	// or if the polygon has counter-clockwise winding
+	new_triangles := 0
 
 	for len(checklist) > 3 {
 		checklist_loop: for current, i in checklist {
@@ -93,6 +102,8 @@ triangulate_polygon :: proc(vertices: []vec2, allocator := context.temp_allocato
 
 			angle_type := get_angle_type(to_prev, to_next)
 
+			// if the current (inside) angle is > 180 degrees, we can't cut from it's neighbours
+			// as that would form a triangle outside of the polygon
 			if angle_type == .REFLEX {
 				continue
 			}
@@ -110,10 +121,21 @@ triangulate_polygon :: proc(vertices: []vec2, allocator := context.temp_allocato
 				}
 			}
 
+			new_triangles += 1
+
 			append(&triangles, triangle)
+
 			ordered_remove(&checklist, i)
 			break
 		}
+
+		if new_triangles == 0 {
+			panic(
+				"No new triangles found within the polygon. Are you sure the polygon has clockwise winding?",
+			)
+		}
+
+		new_triangles = 0
 	}
 
 	last_triangle := Triangle{checklist[0], checklist[1], checklist[2]}
@@ -214,9 +236,8 @@ handle_input :: proc() {
 }
 
 get_angle_type :: proc(v1: vec2, v2: vec2) -> Angle_Type {
-	// NOTE: we compute the cross product to see if the angle is pointing "right" or "left" (more or less than 180 degrees)
-	// if the polygon is constructed with clockwise winding order, and the cross product is < 0, the angle is more than 180 degrees
-	// in which case, we can't form a triangle out of the neighbouring vertices, because the triangle would be outside of the polygon
+	// we compute the cross product to see if the angle is pointing "right" or "left" (more or less than 180 degrees)
+	// if the polygon is constructed with clockwise winding order, and the cross product is > 0, the angle is more than 180 degrees
 	cross_product := linalg.cross(v1, v2)
 
 	angle_type: Angle_Type
