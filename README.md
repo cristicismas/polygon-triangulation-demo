@@ -4,7 +4,7 @@ Small odin program that splits a hard-coded polygon into the least amount of tri
 
 ![screenshot](triangulation_ss.png)
 
-Tested with odin version dev-2026-04.o
+Tested with odin version dev-2026-04
 
 Either run the precompiled linux binary (./polygon-triangulation-demo) or run `odin run .` if you have the odin compiler installed to compile and run it.
 
